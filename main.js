@@ -2,10 +2,13 @@ require('dotenv').config();
 const { Client } = require('discord.js-selfbot-v13');
 const client = new Client();
 
-const SOURCE_CHANNEL_ID = process.env.SOURCE_CHANNEL_ID;
-const TARGET_CHANNEL_ID = process.env.TARGET_CHANNEL_ID;
 const BATCH_INTERVAL = 5000;
 let messageQueue = [];
+
+const channelMappings = {
+  [process.env.SOURCE_CHANNEL_ID_1]: process.env.TARGET_CHANNEL_ID_1,
+  [process.env.SOURCE_CHANNEL_ID_2]: process.env.TARGET_CHANNEL_ID_2,
+};
 
 client.on('ready', () => {
   console.log(`${client.user.tag} is ready!`);
@@ -13,39 +16,41 @@ client.on('ready', () => {
 });
 
 client.on('messageCreate', async message => {
-  if (message.channel.id === SOURCE_CHANNEL_ID) {
+  if (channelMappings[message.channel.id]) {
     if (message.author.id === client.user.id) return;
 
     const timestamp = new Date(message.createdTimestamp).toISOString();
+    const formattedMessage = {
+      content: `<@${message.author.id}> / **${message.author.tag}**: ${message.content}        \`${timestamp}\``,
+      target: channelMappings[message.channel.id]
+    };
 
-    const formattedMessage = `<@${message.author.id}> / **${message.author.tag}**: ${message.content}        \`${timestamp}\``;
-    
     messageQueue.push(formattedMessage);
   }
 });
 
 async function processMessageQueue() {
-  if (messageQueue.length === 0) return; // Skip if no messages
+  if (messageQueue.length === 0) return;
   
-  const targetChannel = await client.channels.fetch(TARGET_CHANNEL_ID);
-  if (!targetChannel) {
-    console.error('Target channel not found');
-    return;
-  }
+  while (messageQueue.length > 0) {
+    let batchMessage = '';
+    let targetChannelId = messageQueue[0].target;
 
-  let batchMessage = '';
-  while (messageQueue.length > 0 && (batchMessage.length + messageQueue[0].length) <= 2000) {
-    const nextMessage = messageQueue.shift();
-    if (batchMessage.length + nextMessage.length + 1 <= 2000) {
-      batchMessage += nextMessage + '\n';
-    } else {
-      await targetChannel.send(batchMessage);
-      batchMessage = nextMessage + '\n';
+    while (messageQueue.length > 0 && messageQueue[0].target === targetChannelId && (batchMessage.length + messageQueue[0].content.length) <= 2000) {
+      const nextMessage = messageQueue.shift().content;
+      if (batchMessage.length + nextMessage.length + 1 <= 2000) {
+        batchMessage += nextMessage + '\n';
+      } else {
+        const targetChannel = await client.channels.fetch(targetChannelId);
+        await targetChannel.send(batchMessage);
+        batchMessage = nextMessage + '\n'; // Start a new batch
+      }
     }
-  }
 
-  if (batchMessage.length > 0) {
-    await targetChannel.send(batchMessage);
+    if (batchMessage.length > 0) {
+      const targetChannel = await client.channels.fetch(targetChannelId);
+      await targetChannel.send(batchMessage);
+    }
   }
 }
 
