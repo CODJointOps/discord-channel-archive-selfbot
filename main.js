@@ -20,8 +20,13 @@ client.on('messageCreate', async message => {
     if (message.author.id === client.user.id) return;
 
     const timestamp = new Date(message.createdTimestamp).toISOString();
+    let attachmentUrls = message.attachments.map(a => a.url).join(' ');
+    if (attachmentUrls) {
+      attachmentUrls = ' ' + attachmentUrls;
+    }
+
     const formattedMessage = {
-      content: `<@${message.author.id}> / **${message.author.tag}**: ${message.content}        \`${timestamp}\``,
+      content: `<@${message.author.id}> / **${message.author.tag}**: ${message.content}${attachmentUrls}        \`${timestamp}\``,
       target: channelMappings[message.channel.id]
     };
 
