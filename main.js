@@ -16,8 +16,11 @@ client.on('messageCreate', async message => {
   if (message.channel.id === SOURCE_CHANNEL_ID) {
     if (message.author.id === client.user.id) return;
 
-    // Add the new message to the queue
-    messageQueue.push(`<@${message.author.id}> / **${message.author.tag}**: ${message.content}`);
+    const timestamp = new Date(message.createdTimestamp).toISOString();
+
+    const formattedMessage = `<@${message.author.id}> / **${message.author.tag}**: ${message.content}        \`${timestamp}\``;
+    
+    messageQueue.push(formattedMessage);
   }
 });
 
