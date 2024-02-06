@@ -10,7 +10,8 @@ const channelMappings = {
   [process.env.SOURCE_CHANNEL_ID_2]: process.env.TARGET_CHANNEL_ID_2,
 };
 
-const includeImages = process.env.IMAGES === '1';
+let includeImages = process.env.IMAGES === '1';
+const COMMAND_CHANNEL_ID = process.env.COMMAND_CHANNEL_ID;
 
 client.on('ready', () => {
   console.log(`${client.user.tag} is ready!`);
@@ -18,6 +19,12 @@ client.on('ready', () => {
 });
 
 client.on('messageCreate', async message => {
+  if (message.channel.id === COMMAND_CHANNEL_ID && message.content === '.toggleimages') {
+    includeImages = !includeImages;
+    return message.channel.send(`Image and link forwarding is now ${includeImages ? "enabled" : "disabled"}.`)
+      .then(msg => setTimeout(() => msg.delete(), 5000));
+  }
+
   if (channelMappings[message.channel.id]) {
     if (message.author.id === client.user.id) return;
 
