@@ -10,6 +10,8 @@ const channelMappings = {
   [process.env.SOURCE_CHANNEL_ID_2]: process.env.TARGET_CHANNEL_ID_2,
 };
 
+const includeImages = process.env.IMAGES === '1';
+
 client.on('ready', () => {
   console.log(`${client.user.tag} is ready!`);
   setInterval(processMessageQueue, BATCH_INTERVAL);
@@ -19,14 +21,22 @@ client.on('messageCreate', async message => {
   if (channelMappings[message.channel.id]) {
     if (message.author.id === client.user.id) return;
 
+    let content = message.content;
+    if (!includeImages) {
+      content = content.replace(/https?:\/\/\S+/g, '[Link removed]');
+    }
+
     const timestamp = new Date(message.createdTimestamp).toISOString();
-    let attachmentUrls = message.attachments.map(a => a.url).join(' ');
-    if (attachmentUrls) {
-      attachmentUrls = ' ' + attachmentUrls;
+    let attachmentUrls = '';
+    if (includeImages) {
+      attachmentUrls = message.attachments.map(a => a.url).join(' ');
+      if (attachmentUrls) {
+        attachmentUrls = ' ' + attachmentUrls;
+      }
     }
 
     const formattedMessage = {
-      content: `<@${message.author.id}> / **${message.author.tag}**: ${message.content}${attachmentUrls}        \`${timestamp}\``,
+      content: `<@${message.author.id}> / **${message.author.tag}**: ${content}${attachmentUrls}        \`${timestamp}\``,
       target: channelMappings[message.channel.id]
     };
 
@@ -36,7 +46,7 @@ client.on('messageCreate', async message => {
 
 async function processMessageQueue() {
   if (messageQueue.length === 0) return;
-  
+
   while (messageQueue.length > 0) {
     let batchMessage = '';
     let targetChannelId = messageQueue[0].target;
