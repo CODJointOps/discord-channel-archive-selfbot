@@ -1,6 +1,8 @@
 require('dotenv').config();
 const { Client } = require('discord.js-selfbot-v13');
 const client = new Client();
+const fs = require('fs');
+const path = require('path');
 
 const BATCH_INTERVAL = 5000;
 let messageQueue = [];
@@ -17,6 +19,25 @@ client.on('ready', () => {
   console.log(`${client.user.tag} is ready!`);
   setInterval(processMessageQueue, BATCH_INTERVAL);
 });
+
+const outputsDir = path.join(__dirname, 'outputs');
+if (!fs.existsSync(outputsDir)) {
+  fs.mkdirSync(outputsDir, { recursive: true });
+}
+
+function logMessageToFile(channelId, message) {
+  const channelDir = path.join(outputsDir, channelId);
+  if (!fs.existsSync(channelDir)) {
+    fs.mkdirSync(channelDir, { recursive: true });
+  }
+
+  const logFilePath = path.join(channelDir, 'messages_logged.txt');
+  fs.appendFile(logFilePath, message + '\n', err => {
+    if (err) {
+      console.error('Failed to log message to file:', err);
+    }
+  });
+}
 
 client.on('messageCreate', async message => {
   if (message.channel.id === COMMAND_CHANNEL_ID && message.content === '.toggleimages') {
@@ -43,9 +64,12 @@ client.on('messageCreate', async message => {
     }
 
     const formattedMessage = {
-      content: `\`${timestamp}\` <@${message.author.id}> / **${message.author.tag}**: ${content}${attachmentUrls}`,
+      content: `\`${timestamp}\` <@${message.author.id}> / **${message.author.tag}**: ${content}${attachmentUrls} \`[Message ID: ${message.id}]\``,
       target: channelMappings[message.channel.id]
     };
+
+    const formattedMessageForLog = `${timestamp} <@${message.author.id}> / ${message.author.username}: ${content}${attachmentUrls} [Message ID: ${message.id}]`;
+    logMessageToFile(message.channel.id.toString(), formattedMessageForLog);
 
     messageQueue.push(formattedMessage);
   }
