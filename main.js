@@ -43,7 +43,7 @@ client.on('messageCreate', async message => {
     }
 
     const formattedMessage = {
-      content: `<@${message.author.id}> / **${message.author.tag}**: ${content}${attachmentUrls}        \`${timestamp}\``,
+      content: `\`${timestamp}\` <@${message.author.id}> / **${message.author.tag}**: ${content}${attachmentUrls}`,
       target: channelMappings[message.channel.id]
     };
 
