@@ -17,6 +17,9 @@ const COMMAND_CHANNEL_ID = process.env.COMMAND_CHANNEL_ID;
 
 client.on('ready', () => {
   console.log(`${client.user.tag} is ready!`);
+  client.user.setPresence({
+    status: 'invisible'
+  })
   setInterval(processMessageQueue, BATCH_INTERVAL);
 });
 
