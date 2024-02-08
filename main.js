@@ -10,6 +10,7 @@ let messageQueue = [];
 const channelMappings = {
   [process.env.SOURCE_CHANNEL_ID_1]: process.env.TARGET_CHANNEL_ID_1,
   [process.env.SOURCE_CHANNEL_ID_2]: process.env.TARGET_CHANNEL_ID_2,
+  [process.env.SOURCE_CHANNEL_ID_3]: process.env.TARGET_CHANNEL_ID_3,
 };
 
 let includeImages = process.env.IMAGES === '1';
