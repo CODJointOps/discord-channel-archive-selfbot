@@ -67,7 +67,7 @@ client.on('messageCreate', async message => {
         let response = "Image forwarding status for channels:\n";
         Object.keys(channelMappings).forEach(sourceChannelId => {
             const status = channelSettings.includeImages[sourceChannelId] ? "Enabled" : "Disabled";
-            response += `- <#${sourceChannelId}> - (sourceChannelId): ${status}\n`;
+            response += `- <#${sourceChannelId}> - (${sourceChannelId}): ${status}\n`;
         });
         return message.channel.send(response).then(msg => setTimeout(() => msg.delete(), 10000));
     } else if (args.length === 2) {
