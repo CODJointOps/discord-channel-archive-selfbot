@@ -18,6 +18,20 @@ const channelMappings = {
 
 let includeImages = process.env.IMAGES === '1';
 const COMMAND_CHANNEL_ID = process.env.COMMAND_CHANNEL_ID;
+const confPath = path.join(__dirname, 'conf');
+const settingsFilePath = path.join(confPath, 'channelSettings.json');
+
+if (!fs.existsSync(confPath)) {
+    fs.mkdirSync(confPath, { recursive: true });
+}
+
+let channelSettings = {};
+if (fs.existsSync(settingsFilePath)) {
+    channelSettings = JSON.parse(fs.readFileSync(settingsFilePath, 'utf8'));
+} else {
+    channelSettings = { includeImages: {} };
+    fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
+}
 
 client.on('ready', () => {
   console.log(`${client.user.tag} is ready!`);
@@ -47,14 +61,20 @@ function logMessageToFile(channelId, message) {
 }
 
 client.on('messageCreate', async message => {
-  if (message.channel.id === COMMAND_CHANNEL_ID && message.content === '.toggleimages') {
-    includeImages = !includeImages;
-    return message.channel.send(`Image and link forwarding is now ${includeImages ? "enabled" : "disabled"}.`)
-      .then(msg => setTimeout(() => msg.delete(), 5000));
+    if (message.channel.id === COMMAND_CHANNEL_ID && message.content.startsWith('.toggleimages')) {
+    const args = message.content.split(' ');
+    if (args.length < 2) {
+        return message.reply("Usage: .toggleimages <channelId>").then(msg => setTimeout(() => msg.delete(), 5000));
+    }
+    const channelId = args[1];
+    channelSettings.includeImages[channelId] = !channelSettings.includeImages[channelId];
+    fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
+    return message.reply(`Image and link forwarding for channel ${channelId} is now ${channelSettings.includeImages[channelId] ? "enabled" : "disabled"}.`).then(msg => setTimeout(() => msg.delete(), 5000));
   }
 
   if (channelMappings[message.channel.id]) {
     if (message.author.id === client.user.id) return;
+    const includeImages = channelSettings.includeImages[message.channel.id] || false;
 
     let content = message.content;
     if (!includeImages) {
