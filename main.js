@@ -62,24 +62,28 @@ function logMessageToFile(channelId, message) {
 }
 
 client.on('messageCreate', async message => {
-    if (message.channel.id === COMMAND_CHANNEL_ID && message.content.startsWith('.toggleimages')) {
+  if (message.channel.id === COMMAND_CHANNEL_ID && message.content.startsWith('.toggleimages')) {
     const args = message.content.split(' ');
     if (args.length === 1) {
-        let response = "Image forwarding status for channels:\n";
-        Object.keys(channelMappings).forEach(sourceChannelId => {
-            if (!sourceChannelId || sourceChannelId === 'undefined') return;
-            const targetChannelId = channelMappings[sourceChannelId];
-            const status = channelSettings.includeImages[sourceChannelId] ? "Enabled" : "Disabled";
-            response += `- <#${sourceChannelId}> to <#${targetChannelId}> (${targetChannelId}) : ${status}\n`;
-        });
-        return message.channel.send(response).then(msg => setTimeout(() => msg.delete(), 10000));
-    } else if (args.length === 2) {
-        const channelId = args[1];
-        channelSettings.includeImages[channelId] = !channelSettings.includeImages[channelId];
-        fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
-        return message.reply(`Image and link forwarding for channel <#${channelId}> is now ${channelSettings.includeImages[channelId] ? "enabled" : "disabled"}.`).then(msg => setTimeout(() => msg.delete(), 5000));
+      let response = "Image forwarding status for channels:\n";
+      for (const sourceChannelId of Object.keys(channelMappings)) {
+        if (!sourceChannelId || sourceChannelId === 'undefined') continue;
+        const targetChannelId = channelMappings[sourceChannelId];
+        const status = channelSettings.includeImages[sourceChannelId] !== undefined ? (channelSettings.includeImages[sourceChannelId] ? "Enabled" : "Disabled") : "Not Set";
+        response += `- <#${sourceChannelId}> to <#${targetChannelId}> (${sourceChannelId}) : ${status}\n`;
+      }
+      return message.channel.send(response).then(msg => setTimeout(() => msg.delete(), 10000));
+    }
+    else if (args.length === 2) {
+      const channelId = args[1];
+      if (!Object.keys(channelMappings).includes(channelId)) {
+        return message.reply(`Channel ID ${channelId} is not a recognized source channel.`).then(msg => setTimeout(() => msg.delete(), 5000));
+      }
+      channelSettings.includeImages[channelId] = !channelSettings.includeImages[channelId];
+      fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
+      return message.reply(`Image and link forwarding for channel <#${channelId}> is now ${channelSettings.includeImages[channelId] ? "enabled" : "disabled"}.`).then(msg => setTimeout(() => msg.delete(), 5000));
     } else {
-        return message.reply("Usage: .toggleimages <channelId>").then(msg => setTimeout(() => msg.delete(), 5000));
+      return message.reply("Usage: .toggleimages <channelId>").then(msg => setTimeout(() => msg.delete(), 5000));
     }
   }
 
