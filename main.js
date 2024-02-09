@@ -39,6 +39,7 @@ client.on('ready', () => {
     status: 'invisible'
   })
   setInterval(processMessageQueue, BATCH_INTERVAL);
+  console.log("Channel Mappings:", channelMappings);
 });
 
 const outputsDir = path.join(__dirname, 'outputs');
@@ -66,6 +67,9 @@ client.on('messageCreate', async message => {
     if (args.length === 1) {
         let response = "Image forwarding status for channels:\n";
         Object.keys(channelMappings).forEach(sourceChannelId => {
+        if (sourceChannelId === 'undefined' || !sourceChannelId) {
+            return;
+        }
             const status = channelSettings.includeImages[sourceChannelId] ? "Enabled" : "Disabled";
             response += `- <#${sourceChannelId}> - (${sourceChannelId}): ${status}\n`;
         });
