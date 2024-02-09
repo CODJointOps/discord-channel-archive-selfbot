@@ -63,13 +63,21 @@ function logMessageToFile(channelId, message) {
 client.on('messageCreate', async message => {
     if (message.channel.id === COMMAND_CHANNEL_ID && message.content.startsWith('.toggleimages')) {
     const args = message.content.split(' ');
-    if (args.length < 2) {
+    if (args.length === 1) {
+        let response = "Image forwarding status for channels:\n";
+        Object.keys(channelMappings).forEach(sourceChannelId => {
+            const status = channelSettings.includeImages[sourceChannelId] ? "Enabled" : "Disabled";
+            response += `- <#${sourceChannelId}>: ${status}\n`;
+        });
+        return message.channel.send(response).then(msg => setTimeout(() => msg.delete(), 10000));
+    } else if (args.length === 2) {
+        const channelId = args[1];
+        channelSettings.includeImages[channelId] = !channelSettings.includeImages[channelId];
+        fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
+        return message.reply(`Image and link forwarding for channel <#${channelId}> is now ${channelSettings.includeImages[channelId] ? "enabled" : "disabled"}.`).then(msg => setTimeout(() => msg.delete(), 5000));
+    } else {
         return message.reply("Usage: .toggleimages <channelId>").then(msg => setTimeout(() => msg.delete(), 5000));
     }
-    const channelId = args[1];
-    channelSettings.includeImages[channelId] = !channelSettings.includeImages[channelId];
-    fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
-    return message.reply(`Image and link forwarding for channel ${channelId} is now ${channelSettings.includeImages[channelId] ? "enabled" : "disabled"}.`).then(msg => setTimeout(() => msg.delete(), 5000));
   }
 
   if (channelMappings[message.channel.id]) {
