@@ -68,14 +68,37 @@ client.on('messageCreate', async message => {
   if (message.channel.id === COMMAND_CHANNEL_ID && message.content.startsWith('.filter')) {
     const args = message.content.split(' ');
     if (args.length < 3) {
-        return message.reply("Usage: .filter <channelId> <userId>").then(msg => setTimeout(() => msg.delete(), 5000));
+        return message.reply("Usage: .filter <channelId> add|remove|clear <userId>").then(msg => setTimeout(() => msg.delete(), 5000));
     }
 
-    const [_, channelId, userId] = args;
-    channelSettings.filters[channelId] = userId;
-    fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
+    const channelId = args[1];
+    const action = args[2];
+    const userId = args[3];
 
-    return message.reply(`Messages from user ID ${userId} in channel ID ${channelId} will now be specifically logged.`).then(msg => setTimeout(() => msg.delete(), 5000));
+    channelSettings.filters[channelId] = channelSettings.filters[channelId] || [];
+
+    switch (action) {
+        case 'add':
+            if (!channelSettings.filters[channelId].includes(userId)) {
+                channelSettings.filters[channelId].push(userId);
+                message.reply(`Added user ID ${userId} to the filter for channel ID ${channelId}.`).then(msg => setTimeout(() => msg.delete(), 5000));
+            } else {
+                message.reply(`User ID ${userId} is already in the filter for channel ID ${channelId}.`).then(msg => setTimeout(() => msg.delete(), 5000));
+            }
+            break;
+        case 'remove':
+            channelSettings.filters[channelId] = channelSettings.filters[channelId].filter(id => id !== userId);
+            message.reply(`Removed user ID ${userId} from the filter for channel ID ${channelId}.`).then(msg => setTimeout(() => msg.delete(), 5000));
+            break;
+        case 'clear':
+            channelSettings.filters[channelId] = [];
+            message.reply(`Cleared all filters for channel ID ${channelId}.`).then(msg => setTimeout(() => msg.delete(), 5000));
+            break;
+        default:
+            message.reply("Invalid action. Use 'add', 'remove', or 'clear'.").then(msg => setTimeout(() => msg.delete(), 5000));
+      }
+
+    fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
   }
 
 
@@ -106,15 +129,15 @@ client.on('messageCreate', async message => {
 
   if (channelMappings[message.channel.id]) {
     if (message.author.id === client.user.id) return;
-    const filterUserId = channelSettings.filters[message.channel.id];
-    let shouldLog = true;
+    const filterUserIds = channelSettings.filters[message.channel.id] || [];
+    let shouldLog = filterUserIds.length === 0;
 
-    if (filterUserId) {
-      const isFromFilteredUser = message.author.id === filterUserId;
-      const isReplyToFilteredUser = message.reference && message.reference.messageId ? await checkIfReplyToFilteredUser(message, filterUserId) : false;
-      const isMentioningFilteredUser = message.mentions.users.has(filterUserId);
+    if (filterUserIds.length > 0) {
+      const isFromFilteredUsers = filterUserIds.includes(message.author.id);
+      const isReplyToFilteredUsers = message.reference && message.reference.messageId ? await checkIfReplyToFilteredUsers(message, filterUserIds) : false;
+      const isMentioningFilteredUsers = message.mentions.users.some(user => filterUserIds.includes(user.id));
 
-      shouldLog = isFromFilteredUser || isReplyToFilteredUser || isMentioningFilteredUser;
+      shouldLog = isFromFilteredUsers || isReplyToFilteredUsers || isMentioningFilteredUsers;
     }
     
     if (!shouldLog) return;
