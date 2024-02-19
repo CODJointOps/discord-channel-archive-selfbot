@@ -63,6 +63,19 @@ function logMessageToFile(channelId, message) {
   });
 }
 
+async function checkIfReplyToFilteredUsers(message, filterUserIds) {
+  if (message.reference && message.reference.messageId) {
+      try {
+          const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
+          return filterUserIds.includes(referencedMessage.author.id);
+      } catch (error) {
+          console.error('Failed to fetch referenced message:', error);
+          return false;
+      }
+  }
+  return false;
+}
+
 client.on('messageCreate', async message => {
 
   if (message.channel.id === COMMAND_CHANNEL_ID && message.content.startsWith('.filter')) {
@@ -134,10 +147,10 @@ client.on('messageCreate', async message => {
 
     if (filterUserIds.length > 0) {
       const isFromFilteredUsers = filterUserIds.includes(message.author.id);
-      const isReplyToFilteredUsers = message.reference && message.reference.messageId ? await checkIfReplyToFilteredUsers(message, filterUserIds) : false;
       const isMentioningFilteredUsers = message.mentions.users.some(user => filterUserIds.includes(user.id));
+      const isReplyToFilteredUsers = message.reference && message.reference.messageId ? await checkIfReplyToFilteredUsers(message, filterUserIds) : false;
 
-      shouldLog = isFromFilteredUsers || isReplyToFilteredUsers || isMentioningFilteredUsers;
+      shouldLog = isFromFilteredUsers || isMentioningFilteredUsers || isReplyToFilteredUsers;
     }
     
     if (!shouldLog) return;
