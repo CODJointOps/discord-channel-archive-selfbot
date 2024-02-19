@@ -33,6 +33,8 @@ if (fs.existsSync(settingsFilePath)) {
     fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
 }
 
+channelSettings.filters = channelSettings.filters || {};
+
 client.on('ready', () => {
   console.log(`${client.user.tag} is ready!`);
   client.user.setPresence({
@@ -62,6 +64,21 @@ function logMessageToFile(channelId, message) {
 }
 
 client.on('messageCreate', async message => {
+
+  if (message.channel.id === COMMAND_CHANNEL_ID && message.content.startsWith('.filter')) {
+    const args = message.content.split(' ');
+    if (args.length < 3) {
+        return message.reply("Usage: .filter <channelId> <userId>").then(msg => setTimeout(() => msg.delete(), 5000));
+    }
+
+    const [_, channelId, userId] = args;
+    channelSettings.filters[channelId] = userId;
+    fs.writeFileSync(settingsFilePath, JSON.stringify(channelSettings, null, 2));
+
+    return message.reply(`Messages from user ID ${userId} in channel ID ${channelId} will now be specifically logged.`).then(msg => setTimeout(() => msg.delete(), 5000));
+  }
+
+
   if (message.channel.id === COMMAND_CHANNEL_ID && message.content.startsWith('.toggleimages')) {
     const args = message.content.split(' ');
     if (args.length === 1) {
@@ -89,6 +106,19 @@ client.on('messageCreate', async message => {
 
   if (channelMappings[message.channel.id]) {
     if (message.author.id === client.user.id) return;
+    const filterUserId = channelSettings.filters[message.channel.id];
+    let shouldLog = true;
+
+    if (filterUserId) {
+      const isFromFilteredUser = message.author.id === filterUserId;
+      const isReplyToFilteredUser = message.reference && message.reference.messageId ? await checkIfReplyToFilteredUser(message, filterUserId) : false;
+      const isMentioningFilteredUser = message.mentions.users.has(filterUserId);
+
+      shouldLog = isFromFilteredUser || isReplyToFilteredUser || isMentioningFilteredUser;
+    }
+    
+    if (!shouldLog) return;
+
     const includeImages = channelSettings.includeImages[message.channel.id] || false;
 
     let content = message.content;
@@ -116,6 +146,16 @@ client.on('messageCreate', async message => {
     messageQueue.push(formattedMessage);
   }
 });
+
+async function checkIfReplyToFilteredUser(message, userId) {
+  try {
+      const referencedMessage = await message.channel.messages.fetch(message.reference.messageId);
+      return referencedMessage.author.id === userId;
+  } catch (error) {
+      console.error('Failed to fetch referenced message:', error);
+      return false;
+  }
+}
 
 async function processMessageQueue() {
   if (messageQueue.length === 0) return;
